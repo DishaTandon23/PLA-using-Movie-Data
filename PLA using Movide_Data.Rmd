@@ -1,0 +1,163 @@
+---
+title: "PLA using Movie Data"
+author: "Disha Tandon"
+date: "2024-10-21"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+# Perceptron Learning Algorithm
+## Introduction
+The goal of this Project is to build a linear model using the Perceptron Learning Algorithm (PLA) to help an online video company, such as Netflix, recommend movies to one of its customers, Ms. X. Ms. X selects movies based on two factors: the level of violence and the critic ratings. The data includes whether Ms. X accepted or rejected each movie and the task is to create a model that predicts future selections using these features. The assignment includes reading and examining the data, training a perceptron and plotting a decision boundary to visualize the results.
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(ggplot2)
+```
+
+## Read and Examining the Data
+I load the dataset from MovieData.csv and use str() to check its structure. The dataset contains three columns: LevelOfViolence, CriticsRating and Watched. This helps me understand what kind of data I'm working with.
+```{r data}
+d = read.csv('MovieData.csv')
+str(d)
+```
+The dataset has 13 observations with 3 variables. The LevelOfViolence is an integer, the CriticsRating is a numeric value and Watched represents whether Ms. X watched the movie (-1 for "Not Watched" and 1 for "Watched").
+Next, I take a closer look at the data by displaying the first few rows with head() and summarizing the dataset with summary().
+```{r Summary}
+head(d)
+summary(d)
+```
+The head() output shows the first six rows of the data and the summary gives key statistics. Most movies in this dataset are not watched (based on the negative mean of the Watched column) and the ratings vary from 1.2 to 4.9, with violence levels ranging from 1 to 5.
+## Visualizing CriticsRating vs LevelOfViolence
+I create a scatter plot to visualize the relationship between LevelOfViolence and CriticsRating using color to differentiate whether Ms. X watched the movie or not.
+```{r plot}
+# ensuring "Watched" is treated as a factor with proper labels
+d$Watched <- factor(d$Watched, levels = c(-1, 1), labels = c("Not Watched", "Watched"))
+
+# Plot CriticsRating vs LevelOfViolence, labeling "Not Watched" and "Watched"
+ggplot(d, aes(x = LevelOfViolence, y = CriticsRating, color = Watched)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("Not Watched" = "red", "Watched" = "blue")) +
+  labs(title = "Critics Rating vs Level of Violence", 
+       x = "Level of Violence", 
+       y = "Critics Rating", 
+       color = "Movie Status") +
+  theme_minimal()
+
+
+```
+The plot shows blue dots for "Watched" and red dots for "Not Watched." This gives a clear picture of how Ms. X’s preferences are distributed across violence levels and ratings.
+
+From the plot, I can see that Ms. X tends to watch movies with higher critic ratings but there's a variety in the level of violence for both watched and unwatched movies.
+
+## Training a Perceptron with PLA
+This code implements the Perceptron Learning Algorithm (PLA) to classify whether Ms. X would watch a movie based on its level of violence and critics' ratings. First, the seed is set (set.seed(123)) to ensure reproducibility in initializing random weights. The PLA function is defined to take the dataset and a maximum number of iterations (1000 by default). The features, including a bias term, are extracted into a matrix X, and the labels (watched or not watched) are stored in y.
+
+The algorithm initializes random weights and begins a training loop. For each data point, a prediction is made by calculating the dot product between the weights and the feature values. If the prediction is incorrect, the weights are updated using the formula weights_new = weights_old + y[j] * X[j, ]. This continues until all points are classified correctly or the maximum iterations are reached.
+
+The function returns the final weights and the number of iterations it took for the algorithm to converge. After loading the dataset (MovieData.csv), the PLA is run on the data and the results (final weights and iteration count) are stored. These results represent the decision boundary and the efficiency of the algorithm in classifying whether a movie would be watched or not.
+```{r PLA}
+# setting the seed for random weight initialization
+set.seed(123)
+
+# PLA Implementation
+PLA <- function(data, max_iter = 1000) {
+  
+  # extracting features and labels
+  X <- as.matrix(cbind(1, data[, c("LevelOfViolence", "CriticsRating")]))
+  y <- data$Watched
+  
+  # initializing random weights and iteration counter
+  weights <- runif(ncol(X))
+  iteration <- 0
+  
+  # training loop
+  for (i in 1:max_iter) {
+    iteration <- i
+    misclassified <- 0
+    for (j in 1:nrow(X)) {
+      # predicting using current weights (activation function)
+      prediction <- sign(sum(weights * X[j, ]))
+      
+      # if prediction is 0, treat it as a misclassification (you can also treat 0 as -1 or 1)
+      if (is.na(prediction) || prediction == 0) {
+        prediction <- -1
+      }
+      
+      # If prediction is incorrect, update weights
+      if (prediction != y[j]) {
+        weights <- weights + y[j] * X[j, ]
+        misclassified <- misclassified + 1
+      }
+    }
+    # if all points are classified correctly, stop training
+    if (misclassified == 0) {
+      break
+    }
+  }
+  # returning the final weights and the number of iterations it took to converge
+  return(list(weights = weights, iterations = iteration))
+}
+
+# loading the data
+d <- read.csv('MovieData.csv')
+
+# running the PLA on the movie data
+result <- PLA(d)
+weights <- result$weights
+iterations <- result$iterations
+
+```
+The function runs until all points are correctly classified, and it returns the final weights and the number of iterations taken. The model learns to differentiate between watched and unwatched movies based on violence and critic ratings.
+
+## Reporting the Model
+
+Here, I display the results of the training process, which includes the final weights of the model and the number of iterations it took to converge.
+```{r outputting_final_weights_and_number_of_Itertions}
+# outputting the final weights and number of iterations
+cat("Final Weights:", weights, "\n")
+cat("Number of iterations:", iterations, "\n")
+```
+The final weights define the decision boundary that separates "Watched" from "Not Watched" movies. The PLA took 27 iterations to complete, showing the time it took for the model to learn and stabilize.
+
+## Plot of Boundary Line
+Finally, I visualize the decision boundary that the model learned. The black line in the plot shows the boundary that separates "Watched" from "Not Watched" movies, based on the learned weights.
+```{r plotting_Decision_Boundaries}
+# making sure "Watched" is treated as a factor with proper labels
+d$Watched <- factor(d$Watched, levels = c(-1, 1), labels = c("Not Watched", "Watched"))
+
+# function to plot the decision boundary
+decision_boundary <- function(weights, data) {
+  ggplot(data, aes(x = LevelOfViolence, y = CriticsRating, color = Watched)) +
+    geom_point(size = 3) +
+    geom_abline(intercept = -weights[1]/weights[3], slope = -weights[2]/weights[3], color = "black") +
+    scale_color_manual(values = c("Not Watched" = "red", "Watched" = "blue")) +
+    labs(title = "Decision Boundary", 
+         x = "Level of Violence", 
+         y = "Critics Rating", 
+         color = "Movie Status") +
+    theme_minimal()
+}
+
+# plotting with decision boundary
+decision_boundary(weights, d)
+
+```
+
+This plot visualizes the decision boundary created by the Perceptron Learning Algorithm (PLA) based on Ms. X’s movie-watching habits. The x-axis represents the level of violence in a movie, while the y-axis shows the critics' rating. The red points indicate movies that Ms. X did not watch, while the blue points represent movies that she did watch.
+
+The black line is the decision boundary learned by the PLA. It separates the two classes: movies Ms. X is predicted to watch (blue points above the line) and those she is predicted not to watch (red points below the line). The boundary is based on the final weights generated by the algorithm which were updated iteratively to classify the data points as accurately as possible.
+
+This visualization helps confirm how well the PLA has learned to classify movies based on the given features which shows a clear separation between the two categories.
+
+## Conclusion
+
+Conclusion
+I used the Perceptron Learning Algorithm to classify whether Ms. X would watch a movie based on its level of violence and critics' ratings. By iteratively adjusting the weights, I was able to generate a decision boundary that effectively separates the watched and not watched movies. After 27 iterations, the model converged, and the final plot clearly shows the boundary between the two categories.
+
+The results suggest that Ms. X is more likely to watch movies with higher critics' ratings, while her tolerance for violence varies. This decision boundary provides helpful insights into her preferences, and it can be used to make more accurate movie recommendations based on these key factors.
+
